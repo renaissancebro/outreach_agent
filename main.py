@@ -9,6 +9,7 @@ from crewai import Agent, Task, Crew
 from dotenv import load_dotenv
 from lead_manager import LeadManager, Lead
 from email_generator import EmailGenerator
+from flask import Flask, request, jsonify
 
 # Load environment variables
 load_dotenv()
@@ -22,6 +23,7 @@ class EnhancedOutreachAgent:
         self.lead_manager = LeadManager(self.config)
         self.email_generator = EmailGenerator(self.config)
         self.crew = self._setup_crew()
+        self.campaign_log = []
 
     def _load_config(self, config_path: str) -> Dict:
         """Load configuration from YAML file"""
@@ -211,6 +213,14 @@ class EnhancedOutreachAgent:
             print(f"   📧 Subject: {email_data['subject']}")
             print(f"   📝 Body length: {len(email_data['body'])} characters")
 
+            # Log the email generation
+            self.campaign_log.append({
+                'full_name': f"{lead.first_name} {lead.last_name}",
+                'company': lead.company_name,
+                'method': 'AI Research' if use_ai_research else 'Template',
+                'timestamp': datetime.now().isoformat()
+            })
+
             emails.append(email_data)
 
             # Rate limiting delay
@@ -250,14 +260,20 @@ class EnhancedOutreachAgent:
 
         print(f"💾 Save operations completed!")
 
+        # Save campaign log
+        self._save_campaign_log()
+
     def run_csv_campaign(self, csv_path: str = None, enrich_with_snov: bool = False, use_ai_research: bool = True):
         """Run a complete outreach campaign using CSV leads"""
+        start_time = datetime.now()
+
         print(f"\n{'='*60}")
         print(f"🚀 STARTING CSV-BASED OUTREACH CAMPAIGN")
         print(f"{'='*60}")
         print(f"📁 CSV Path: {csv_path or 'leads.csv'}")
         print(f"🔍 Enrich with Snov.io: {enrich_with_snov}")
         print(f"🤖 AI Research: {use_ai_research}")
+        print(f"⏰ Start Time: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"{'='*60}")
 
         # Load and optionally enrich leads
@@ -276,13 +292,26 @@ class EnhancedOutreachAgent:
         print(f"\n💾 STEP 3: Saving campaign results...")
         self.save_results(emails, leads if enrich_with_snov else None)
 
+        # Calculate metrics
+        end_time = datetime.now()
+        duration = end_time - start_time
+        fallback_count = sum(1 for log in self.campaign_log[-len(leads):] if log['method'] == 'Template')
+        ai_count = sum(1 for log in self.campaign_log[-len(leads):] if log['method'] == 'AI Research')
+
+        # Print summary block
         print(f"\n{'='*60}")
         print(f"🎉 CAMPAIGN COMPLETED SUCCESSFULLY!")
-        print(f"📊 Summary:")
-        print(f"   📧 Emails generated: {len(emails)}")
-        print(f"   👥 Leads processed: {len(leads)}")
-        print(f"   🤖 AI Research used: {use_ai_research}")
-        print(f"   🔍 Snov.io enrichment: {enrich_with_snov}")
+        print(f"{'='*60}")
+        print(f"📊 CAMPAIGN SUMMARY")
+        print(f"{'='*60}")
+        print(f"👥 Total Leads Processed: {len(leads)}")
+        print(f"📧 Emails Generated: {len(emails)}")
+        print(f"🤖 AI Research Used: {ai_count}")
+        print(f"📝 Template Fallbacks: {fallback_count}")
+        print(f"⏰ Start Time: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"⏰ End Time: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"⏱️  Duration: {duration}")
+        print(f"🔍 Snov.io Enrichment: {'✅ Yes' if enrich_with_snov else '❌ No'}")
         print(f"{'='*60}")
 
         return emails
@@ -316,7 +345,36 @@ class EnhancedOutreachAgent:
         self.save_results(emails)
 
         print(f"🎉 Campaign completed! Generated {len(emails)} personalized emails.")
+
+        # Save campaign log
+        self._save_campaign_log()
+
         return emails
+
+    def _save_campaign_log(self):
+        """Save campaign log to CSV and JSON files"""
+        if not self.campaign_log:
+            return
+
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+        # Ensure logs directory exists
+        os.makedirs('logs', exist_ok=True)
+
+        # Save as CSV
+        csv_path = f"logs/campaign_log_{timestamp}.csv"
+        with open(csv_path, 'w', newline='', encoding='utf-8') as csvfile:
+            fieldnames = ['full_name', 'company', 'method', 'timestamp']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(self.campaign_log)
+
+        # Save as JSON
+        json_path = f"logs/campaign_log_{timestamp}.json"
+        with open(json_path, 'w', encoding='utf-8') as jsonfile:
+            json.dump(self.campaign_log, jsonfile, indent=2)
+
+        print(f"📊 Campaign log saved: {csv_path} and {json_path}")
 
 
 def main():
@@ -328,10 +386,19 @@ def main():
     parser.add_argument("--enrich", action="store_true", help="Enrich leads with Snov.io data")
     parser.add_argument("--no-ai-research", action="store_true", help="Disable AI research, use templates only")
     parser.add_argument("--limit", type=int, default=10, help="Limit number of leads to process")
+    parser.add_argument("--server", action="store_true", help="Run as Flask server")
+    parser.add_argument("--host", default="0.0.0.0", help="Server host (default: 0.0.0.0)")
+    parser.add_argument("--port", type=int, default=5000, help="Server port (default: 5000)")
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
 
     args = parser.parse_args()
 
     try:
+        if args.server:
+            # Run as Flask server
+            run_server(host=args.host, port=args.port, debug=args.debug)
+            return 0
+
         # Initialize the agent
         agent = EnhancedOutreachAgent(args.config)
 
@@ -359,6 +426,106 @@ def main():
         return 1
 
     return 0
+
+
+# Flask server for HTTP API
+app = Flask(__name__)
+outreach_agent = None
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint"""
+    return jsonify({
+        'status': 'healthy',
+        'service': 'outreach-agent',
+        'timestamp': datetime.now().isoformat()
+    })
+
+@app.route('/campaign', methods=['POST'])
+def run_campaign():
+    """Run an outreach campaign via HTTP POST"""
+    global outreach_agent
+
+    try:
+        # Parse request data
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No JSON data provided'
+            }), 400
+
+        # Extract parameters
+        csv_path = data.get('csv_path', 'leads.csv')
+        use_ai = data.get('use_ai', True)
+        enrich = data.get('enrich', False)
+        limit = data.get('limit', 10)
+
+        # Initialize agent if not already done
+        if outreach_agent is None:
+            outreach_agent = EnhancedOutreachAgent()
+
+        # Run the campaign
+        print(f"🚀 Starting campaign via HTTP API...")
+        print(f"📁 CSV Path: {csv_path}")
+        print(f"🤖 AI Research: {use_ai}")
+        print(f"🔍 Enrich: {enrich}")
+        print(f"📊 Limit: {limit}")
+
+        emails = outreach_agent.run_csv_campaign(
+            csv_path=csv_path,
+            enrich_with_snov=enrich,
+            use_ai_research=use_ai
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Campaign completed successfully',
+            'emails_generated': len(emails),
+            'campaign_id': datetime.now().strftime('%Y%m%d_%H%M%S'),
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+@app.route('/campaign/status', methods=['GET'])
+def campaign_status():
+    """Get campaign status and recent logs"""
+    global outreach_agent
+
+    try:
+        if outreach_agent is None:
+            return jsonify({
+                'status': 'not_initialized',
+                'message': 'No campaigns have been run yet'
+            })
+
+        return jsonify({
+            'status': 'ready',
+            'last_campaign_logs': outreach_agent.campaign_log[-10:] if outreach_agent.campaign_log else [],
+            'total_campaigns_logged': len(outreach_agent.campaign_log)
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+def run_server(host='0.0.0.0', port=5000, debug=False):
+    """Run the Flask server"""
+    print(f"🌐 Starting Flask server on {host}:{port}")
+    print(f"📋 Available endpoints:")
+    print(f"   GET  /health - Health check")
+    print(f"   POST /campaign - Run outreach campaign")
+    print(f"   GET  /campaign/status - Get campaign status")
+    app.run(host=host, port=port, debug=debug)
 
 
 if __name__ == "__main__":
