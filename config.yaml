@@ -1,0 +1,67 @@
+# Outreach Agent Configuration
+
+# Agent Settings
+agent:
+  role: "Outreach Specialist"
+  goal: "Write personalized cold outreach emails based on company and contact information"
+  backstory: "You are a skilled marketing agent who crafts targeted, warm messages that actually get responses. You excel at personalization and understanding company pain points."
+  verbose: true
+  allow_delegation: false
+
+# Email Templates
+email_templates:
+  subject_templates:
+    - "Quick question about {company_name} and {pain_point}"
+    - "How {company_name} can leverage {solution_benefit}"
+    - "Thought you'd be interested in this for {company_name}"
+
+  opening_templates:
+    - "Hi {first_name}, I noticed {company_name} is doing some interesting work in {industry}."
+    - "Hey {first_name}, I came across {company_name} and was impressed by your {company_achievement}."
+    - "Hello {first_name}, I've been following {company_name}'s work in {industry} and wanted to connect."
+
+# Lead Sources
+lead_sources:
+  snov_io:
+    api_key: "${SNOV_API_KEY}"
+    base_url: "https://api.snov.io"
+    endpoints:
+      search_companies: "/v1/get-company-search"
+      get_company_info: "/v1/get-company-info"
+      get_emails: "/v1/get-emails-from-names"
+
+  csv:
+    default_path: "leads.csv"
+    required_columns:
+      - "first_name"
+      - "last_name"
+      - "email"
+      - "company_name"
+      - "position"
+      - "industry"
+    optional_columns:
+      - "linkedin_url"
+      - "phone"
+      - "website"
+      - "company_size"
+      - "location"
+
+# Personalization Settings
+personalization:
+  research_depth: "medium" # low, medium, high
+  include_company_research: true
+  include_industry_insights: true
+  max_email_length: 300
+  tone: "professional_friendly" # formal, professional_friendly, casual
+
+# Output Settings
+output:
+  format: "json" # json, text, markdown
+  save_to_file: true
+  output_directory: "output"
+  include_metadata: true
+
+# Rate Limiting
+rate_limits:
+  snov_api_calls_per_minute: 60
+  delay_between_emails: 2 # seconds

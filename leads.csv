@@ -1,0 +1,6 @@
+first_name,last_name,email,company_name,position,industry,linkedin_url,phone,website,company_size,location,notes
+John,Smith,john.smith@techcorp.com,TechCorp Inc,CEO,Technology,https://linkedin.com/in/johnsmith,,https://techcorp.com,50-100,San Francisco,Interested in AI solutions
+Sarah,Johnson,sarah.j@greenenergy.com,GreenEnergy Solutions,CTO,Clean Energy,https://linkedin.com/in/sarahjohnson,,https://greenenergy.com,10-50,Boston,Focus on renewable energy
+Mike,Chen,mike.chen@fintechpro.com,FinTech Pro,VP Engineering,Financial Services,https://linkedin.com/in/mikechen,,https://fintechpro.com,100-500,New York,Looking for compliance solutions
+Lisa,Williams,lisa.w@healthtech.com,HealthTech Innovations,Product Manager,Healthcare,https://linkedin.com/in/lisawilliams,,https://healthtech.com,50-100,Austin,Interested in regulatory tracking
+David,Brown,david.brown@manufacturing.com,Advanced Manufacturing,Operations Director,Manufacturing,https://linkedin.com/in/davidbrown,,https://advancedmanufacturing.com,500-1000,Chicago,Needs efficiency solutions
