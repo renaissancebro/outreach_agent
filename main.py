@@ -85,19 +85,40 @@ class EnhancedOutreachAgent:
 
     def process_csv_leads(self, csv_path: str = None, enrich_with_snov: bool = False) -> List[Lead]:
         """Process leads from CSV file"""
-        print(f"📊 Loading leads from CSV: {csv_path or 'leads.csv'}")
-        leads = self.lead_manager.load_csv_leads(csv_path)
-        print(f"✅ Loaded {len(leads)} leads from CSV")
+        print(f"\n📊 Loading leads from CSV: {csv_path or 'leads.csv'}")
+        print(f"🔧 Enrich with Snov.io: {enrich_with_snov}")
+
+        try:
+            leads = self.lead_manager.load_csv_leads(csv_path)
+            print(f"✅ Successfully loaded {len(leads)} leads from CSV")
+
+            # Print first few leads as preview
+            if leads:
+                print(f"📋 Sample leads:")
+                for i, lead in enumerate(leads[:3]):
+                    print(f"   {i+1}. {lead.first_name} {lead.last_name} - {lead.position} at {lead.company_name}")
+                if len(leads) > 3:
+                    print(f"   ... and {len(leads) - 3} more leads")
+
+        except Exception as e:
+            print(f"❌ Error loading CSV: {e}")
+            return []
 
         if enrich_with_snov:
-            print("🔍 Enriching leads with Snov.io data...")
+            print(f"\n🔍 Enriching leads with Snov.io data...")
+            print(f"⚠️  Note: Snov.io integration requires API credentials")
             enriched_leads = []
             for i, lead in enumerate(leads):
-                print(f"   Enriching lead {i+1}/{len(leads)}: {lead.first_name} {lead.last_name}")
-                enriched_lead = self.lead_manager.enrich_lead_with_snov(lead)
-                enriched_leads.append(enriched_lead)
+                print(f"   [{i+1}/{len(leads)}] Enriching: {lead.first_name} {lead.last_name}")
+                try:
+                    enriched_lead = self.lead_manager.enrich_lead_with_snov(lead)
+                    enriched_leads.append(enriched_lead)
+                    print(f"   ✅ Enrichment completed")
+                except Exception as e:
+                    print(f"   ⚠️  Enrichment failed: {e}")
+                    enriched_leads.append(lead)  # Keep original lead
             leads = enriched_leads
-            print("✅ Lead enrichment completed")
+            print(f"✅ Lead enrichment completed")
 
         return leads
 
@@ -110,14 +131,23 @@ class EnhancedOutreachAgent:
 
     def generate_emails_for_leads(self, leads: List[Lead], use_ai_research: bool = True) -> List[Dict]:
         """Generate personalized emails for a list of leads"""
+        print(f"\n🔧 Starting email generation for {len(leads)} leads...")
+        print(f"🔧 AI Research enabled: {use_ai_research}")
+
         emails = []
 
         for i, lead in enumerate(leads):
-            print(f"📧 Generating email {i+1}/{len(leads)} for {lead.first_name} {lead.last_name} at {lead.company_name}")
+            print(f"\n📧 [{i+1}/{len(leads)}] Processing: {lead.first_name} {lead.last_name} at {lead.company_name}")
+            print(f"   📋 Lead details: {lead.position} in {lead.industry}")
+            if lead.website:
+                print(f"   🌐 Website: {lead.website}")
+            if lead.location:
+                print(f"   📍 Location: {lead.location}")
 
             context = {}
 
             if use_ai_research:
+                print(f"   🤖 Starting AI research for {lead.company_name}...")
                 # Use CrewAI for research and email generation
                 try:
                     # Create a research prompt with lead information
@@ -132,8 +162,13 @@ class EnhancedOutreachAgent:
                     Focus on recent news, achievements, challenges, and how our AI dashboard solution could help with regulatory compliance and industry insights.
                     """
 
+                    print(f"   🔍 Research prompt created, running CrewAI...")
+
                     # Run the crew to get research and email
                     result = self.crew.kickoff()
+
+                    print(f"   ✅ AI research completed successfully")
+                    print(f"   📄 AI Result length: {len(str(result))} characters")
 
                     # Parse the result to extract email content
                     # This is a simplified approach - you might want to enhance the parsing
@@ -144,58 +179,105 @@ class EnhancedOutreachAgent:
                     }
 
                 except Exception as e:
-                    print(f"⚠️  AI research failed for {lead.first_name} {lead.last_name}: {e}")
+                    print(f"   ⚠️  AI research failed for {lead.first_name} {lead.last_name}: {e}")
+                    print(f"   🔄 Falling back to template-based generation...")
                     # Fallback to template-based generation
                     context = {
                         'solution_benefit': 'AI-powered regulatory dashboard',
                         'pain_point': 'regulatory compliance tracking'
                     }
             else:
+                print(f"   📝 Using template-based generation (no AI research)...")
                 # Use template-based generation
                 context = {
                     'solution_benefit': 'AI-powered regulatory dashboard',
                     'pain_point': 'regulatory compliance tracking'
                 }
 
+            print(f"   🎯 Context prepared: {list(context.keys())}")
+
             # Generate email using the email generator
+            print(f"   ✍️  Generating email with EmailGenerator...")
             email_data = self.email_generator.generate_email(lead, context)
+
+            print(f"   ✅ Email generated successfully!")
+            print(f"   📧 Subject: {email_data['subject']}")
+            print(f"   📝 Body length: {len(email_data['body'])} characters")
+
             emails.append(email_data)
 
             # Rate limiting delay
             delay = self.config.get('rate_limits', {}).get('delay_between_emails', 2)
             if delay > 0 and i < len(leads) - 1:
+                print(f"   ⏳ Waiting {delay} seconds before next email...")
                 import time
                 time.sleep(delay)
 
+        print(f"\n🎉 Email generation completed! Generated {len(emails)} emails.")
         return emails
 
     def save_results(self, emails: List[Dict], leads: List[Lead] = None):
         """Save generated emails and optionally enriched leads"""
+        print(f"\n💾 Saving results...")
+        print(f"📧 Emails to save: {len(emails)}")
+        print(f"👥 Leads to save: {len(leads) if leads else 0}")
+
         # Save emails
         if self.config.get('output', {}).get('save_to_file', True):
-            output_path = self.email_generator.save_emails(emails)
-            print(f"💾 Emails saved to: {output_path}")
+            print(f"📁 Saving emails to file...")
+            try:
+                output_path = self.email_generator.save_emails(emails)
+                print(f"✅ Emails saved successfully to: {output_path}")
+            except Exception as e:
+                print(f"❌ Error saving emails: {e}")
 
         # Save enriched leads if provided
         if leads and self.config.get('output', {}).get('save_enriched_leads', False):
-            enriched_path = f"enriched_leads_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-            self.lead_manager.save_leads_to_csv(leads, enriched_path)
-            print(f"💾 Enriched leads saved to: {enriched_path}")
+            print(f"📁 Saving enriched leads to CSV...")
+            try:
+                enriched_path = f"enriched_leads_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                self.lead_manager.save_leads_to_csv(leads, enriched_path)
+                print(f"✅ Enriched leads saved to: {enriched_path}")
+            except Exception as e:
+                print(f"❌ Error saving enriched leads: {e}")
+
+        print(f"💾 Save operations completed!")
 
     def run_csv_campaign(self, csv_path: str = None, enrich_with_snov: bool = False, use_ai_research: bool = True):
         """Run a complete outreach campaign using CSV leads"""
-        print("🚀 Starting CSV-based outreach campaign...")
+        print(f"\n{'='*60}")
+        print(f"🚀 STARTING CSV-BASED OUTREACH CAMPAIGN")
+        print(f"{'='*60}")
+        print(f"📁 CSV Path: {csv_path or 'leads.csv'}")
+        print(f"🔍 Enrich with Snov.io: {enrich_with_snov}")
+        print(f"🤖 AI Research: {use_ai_research}")
+        print(f"{'='*60}")
 
         # Load and optionally enrich leads
+        print(f"\n📊 STEP 1: Loading and processing leads...")
         leads = self.process_csv_leads(csv_path, enrich_with_snov)
 
+        if not leads:
+            print(f"❌ No leads loaded. Campaign aborted.")
+            return []
+
         # Generate emails
+        print(f"\n📧 STEP 2: Generating personalized emails...")
         emails = self.generate_emails_for_leads(leads, use_ai_research)
 
         # Save results
+        print(f"\n💾 STEP 3: Saving campaign results...")
         self.save_results(emails, leads if enrich_with_snov else None)
 
-        print(f"🎉 Campaign completed! Generated {len(emails)} personalized emails.")
+        print(f"\n{'='*60}")
+        print(f"🎉 CAMPAIGN COMPLETED SUCCESSFULLY!")
+        print(f"📊 Summary:")
+        print(f"   📧 Emails generated: {len(emails)}")
+        print(f"   👥 Leads processed: {len(leads)}")
+        print(f"   🤖 AI Research used: {use_ai_research}")
+        print(f"   🔍 Snov.io enrichment: {enrich_with_snov}")
+        print(f"{'='*60}")
+
         return emails
 
     def run_snov_campaign(self, company_query: str, limit: int = 10, use_ai_research: bool = True):
