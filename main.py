@@ -1,6 +1,8 @@
 import os
 import yaml
 import argparse
+import csv
+import json
 from typing import List, Dict
 from datetime import datetime
 from crewai import Agent, Task, Crew
@@ -57,22 +59,24 @@ class EnhancedOutreachAgent:
         # Research Task
         research_task = Task(
             description=(
-                "Research the provided company and contact information to gather insights for personalization. "
-                "Focus on: recent news, company achievements, industry challenges, and how our solution could help. "
-                "Return structured data including pain points, solution benefits, and company context."
+                "Research the provided company and contact information to identify market intelligence opportunities. "
+                "Focus on: recent industry developments, compliance changes, competitor activities, policy shifts, and emerging trends. "
+                "Identify specific areas where AlphaRed's AI agents could surface critical intelligence before competitors notice. "
+                "Return structured data including market gaps, intelligence opportunities, company context, and competitive landscape."
             ),
-            expected_output="JSON object with research findings including pain_points, solution_benefits, company_research, and industry_insights",
+            expected_output="JSON object with research findings including market_gaps, intelligence_opportunities, company_research, and competitive_landscape",
             agent=research_agent
         )
 
         # Outreach Task
         outreach_task = Task(
             description=(
-                "Using the research provided and lead information, create a highly personalized outreach email. "
-                "The email should be warm, relevant, and demonstrate understanding of the recipient's role and company. "
-                "Include a compelling subject line and 2-3 paragraph message that feels personal and valuable."
+                "Using the research provided and lead information, create a compelling outreach email that positions AlphaRed as the solution for staying ahead of market changes. "
+                "Emphasize speed, clarity, and competitive advantage through early intelligence. "
+                "Highlight how AlphaRed's AI agents can surface niche market intelligence (compliance changes, competitor moves, policy shifts) before others notice. "
+                "Include a compelling subject line and 2-3 paragraph message that conveys urgency and strategic value."
             ),
-            expected_output="Complete email with subject line and personalized body content",
+            expected_output="Complete email with subject line and personalized body content focused on AlphaRed's market intelligence capabilities",
             agent=outreach_agent,
             context=[research_task]
         )
@@ -150,8 +154,8 @@ class EnhancedOutreachAgent:
                 print(f"   🤖 Starting AI research for {lead.company_name}...")
                 # Use CrewAI for research and email generation
                 try:
-                    # Create a research prompt with lead information
-                    research_prompt = f"""
+                    # Create lead information for the crew
+                    lead_info = f"""
                     Research this company and contact for personalized outreach:
                     - Company: {lead.company_name}
                     - Contact: {lead.first_name} {lead.last_name} ({lead.position})
@@ -162,10 +166,10 @@ class EnhancedOutreachAgent:
                     Focus on recent news, achievements, challenges, and how our AI dashboard solution could help with regulatory compliance and industry insights.
                     """
 
-                    print(f"   🔍 Research prompt created, running CrewAI...")
+                    print(f"   🔍 Lead info prepared, running CrewAI...")
 
-                    # Run the crew to get research and email
-                    result = self.crew.kickoff()
+                    # Run the crew to get research and email with lead-specific inputs
+                    result = self.crew.kickoff(inputs={"lead_info": lead_info})
 
                     print(f"   ✅ AI research completed successfully")
                     print(f"   📄 AI Result length: {len(str(result))} characters")
@@ -183,8 +187,11 @@ class EnhancedOutreachAgent:
                     print(f"   🔄 Falling back to template-based generation...")
                     # Fallback to template-based generation
                     context = {
-                        'solution_benefit': 'AI-powered regulatory dashboard',
-                        'pain_point': 'regulatory compliance tracking'
+                        'solution_benefit': 'AI agents that surface critical market intelligence before competitors notice',
+                        'pain_point': 'missing crucial market shifts and being blindsided by changes',
+                        'emotional_hook': 'never miss a shift that could make or break your business',
+                        'value_prop': 'get signal, not noise - actionable intelligence when it matters most',
+                        'urgency': 'stay ahead of the curve with real-time market intelligence'
                     }
             else:
                 print(f"   📝 Using template-based generation (no AI research)...")
