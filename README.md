@@ -34,6 +34,12 @@ A powerful, configurable outreach agent that generates personalized cold emails 
    SNOV_API_KEY=your_snov_api_key_here  # Optional
    ```
 
+4. **Validate your setup:**
+   Run the validation script to ensure everything is configured correctly:
+   ```bash
+   python test_setup.py
+   ```
+
 ## Configuration
 
 The agent uses `config.yaml` for all settings. Key configuration sections:
@@ -90,6 +96,12 @@ personalization:
 
 ## Usage
 
+### Quick Start
+
+1. **Set up your API keys** in a `.env` file
+2. **Run the validation script**: `python test_setup.py`
+3. **Start generating emails**: `python main.py --csv leads.csv`
+
 ### Basic Usage
 
 **Run with CSV leads:**
@@ -114,6 +126,12 @@ python main.py --csv leads.csv --enrich
 
 ```bash
 python main.py --csv leads.csv --no-ai-research
+```
+
+**Run as a Flask API server:**
+
+```bash
+python main.py --server --port 5000
 ```
 
 ### Advanced Usage
@@ -141,18 +159,41 @@ John,Smith,john@company.com,TechCorp,CEO,Technology,https://linkedin.com/in/john
 
 ## Snov.io Integration
 
-The agent can:
+The agent includes robust Snov.io integration with:
 
-- Search for companies using the Snov.io API
-- Get detailed company information
-- Find email addresses for contacts
-- Enrich existing lead data
+- **Company Search**: Search for companies using the Snov.io API
+- **Company Information**: Get detailed company information
+- **Email Discovery**: Find email addresses for contacts
+- **Lead Enrichment**: Automatically enrich existing lead data
+- **Connection Verification**: Built-in API connection testing
 
-To use Snov.io features:
+### Setting up Snov.io
 
-1. Get a Snov.io API key
-2. Add it to your `.env` file as `SNOV_API_KEY`
-3. Use the `--enrich` flag or `--snov-query` option
+Choose one of two authentication methods:
+
+#### Method 1: OAuth Client Credentials (Recommended)
+1. **Get your Snov.io OAuth credentials** from [snov.io](https://snov.io)
+2. **Add them to your `.env` file**:
+   ```bash
+   SNOV_CLIENT_ID=your_client_id_here
+   SNOV_CLIENT_SECRET=your_client_secret_here
+   ```
+
+#### Method 2: API Key (Alternative)
+1. **Get a Snov.io API key** from [snov.io](https://snov.io)
+2. **Add it to your `.env` file**:
+   ```bash
+   SNOV_API_KEY=your_snov_api_key_here
+   ```
+
+#### Testing and Usage
+3. **Test the connection**:
+   ```bash
+   python test_setup.py
+   ```
+4. **Use Snov.io features**:
+   - `--enrich`: Enrich CSV leads with Snov.io data
+   - `--snov-query`: Search for companies directly
 
 ## Output
 
