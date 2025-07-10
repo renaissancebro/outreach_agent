@@ -51,6 +51,69 @@ output/
 *.log
 *.tmp
 
+# Personal and Test Data (keep private)
+personal_*
+test_data/
+test_license_key.txt
+personal_license.txt
+temp_*.py
+
+# Campaign Output (personal business data)
+personal_campaigns/
+personal_leads/
+personal_crm.db
+
+# Database files
+*.db
+payments.db
+crm.db
+
+# API keys and secrets
+*_api_key.txt
+*_secret.txt
+stripe_keys.txt
+google_credentials.json
+
+# Generated output (contains real data)
+logs/
+enriched_leads_*.csv
+campaign_log_*.csv
+campaign_log_*.json
+*_export.csv
+
+# Personal business data
+my_leads.csv
+my_prospects.csv
+my_campaign_*.json
+business_config.yaml
+
+# Real customer data (if any)
+customer_data/
+client_exports/
+real_leads/
+
+# Stripe test data
+stripe_test_*.json
+webhook_test_*.json
+
+# License files (contain real license keys)
+license_*.txt
+*.license
+
+# Email templates with real business info
+custom_templates.yaml
+business_templates.yaml
+
+# Analytics and reports (may contain sensitive data)
+analytics/
+reports/
+usage_stats.json
+
+# Deployment secrets
+docker-compose.override.yml
+k8s-secrets.yaml
+deployment_vars.env
+
 # Jupyter Notebook
 .ipynb_checkpoints
 

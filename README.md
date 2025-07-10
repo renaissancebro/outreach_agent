@@ -1,6 +1,6 @@
-# Enhanced Outreach Agent with CRM
+# Enhanced Outreach Agent with CRM & Payment System
 
-A comprehensive sales automation platform that combines AI-powered outreach with full CRM functionality. Generate personalized cold emails, manage your sales pipeline, and track every interaction - all in one integrated system.
+A comprehensive sales automation SaaS platform that combines AI-powered outreach with full CRM functionality and tiered subscription access. Generate personalized cold emails, manage your sales pipeline, and track every interaction - all in one integrated system with flexible pricing tiers.
 
 ## Features
 
@@ -31,6 +31,46 @@ A comprehensive sales automation platform that combines AI-powered outreach with
 - **Rate Limiting**: Built-in protection against API limits and blocking
 - **YAML Configuration**: Easy-to-modify settings for all features
 - **Automated Workflows**: Seamless lead-to-email-to-CRM pipeline
+
+### 💳 **Payment System & SaaS Features**
+- **Tiered Subscription Model**: Free, Pro ($49/month), Enterprise ($199/month)
+- **Stripe Integration**: Secure payment processing with webhooks
+- **License Key Management**: Automated license generation and validation
+- **Feature Access Control**: Tiered access to AI research, CRM, and integrations
+- **Usage Tracking**: Monitor emails, API calls, and feature usage
+- **REST API**: Full-featured API for integrations and custom applications
+- **Landing Page**: Built-in checkout flow and pricing display
+
+## 🚀 Subscription Tiers
+
+### Free Tier
+- ✅ **50 emails/month**
+- ✅ **Basic CSV processing**
+- ✅ **Template-based emails**
+- ✅ **Playwright web scraping**
+- ✅ **1 team seat**
+- ❌ No AI research
+- ❌ No CRM dashboard
+- ❌ No API integrations
+
+### Pro Tier - $49/month
+- ✅ **1,000 emails/month**
+- ✅ **AI-powered research**
+- ✅ **Full CRM dashboard**
+- ✅ **Snov.io integration**
+- ✅ **Google Sheets sync**
+- ✅ **SerpAPI access**
+- ✅ **Priority support**
+- ✅ **5 team seats**
+
+### Enterprise Tier - $199/month
+- ✅ **10,000 emails/month**
+- ✅ **All Pro features**
+- ✅ **Advanced analytics**
+- ✅ **Custom integrations**
+- ✅ **Dedicated support**
+- ✅ **50 team seats**
+- ✅ **SLA guarantee**
 
 ## Installation
 
@@ -377,6 +417,81 @@ crm:
   pipeline:
     auto_advance_stages: false
     follow_up_days: 7
+```
+
+## 💳 Payment System & License Management
+
+### Getting Started with Payments
+
+The system operates on a freemium model with automatic feature gating:
+
+1. **Free Tier**: Start immediately with basic features
+2. **Pro Tier**: Unlock AI research, CRM dashboard, and integrations
+3. **Enterprise Tier**: Full access with priority support
+
+### License Management Commands
+
+```bash
+# Check current license status
+python main.py --license-info
+
+# Set a license key (obtained after payment)
+python main.py --set-license "OUTREACH-XXXX-XXXX-XXXX-XXXX"
+
+# Remove stored license key
+python main.py --remove-license
+```
+
+### SaaS API Server
+
+Start the full-featured API server with payment integration:
+
+```bash
+# Start the API server
+python api_server.py
+
+# Access the landing page
+open http://localhost:8000/landing
+
+# View API documentation
+open http://localhost:8000/docs
+```
+
+### Key API Endpoints
+
+- **Landing Page**: `GET /landing` - Pricing and checkout
+- **Pricing Info**: `GET /pricing` - Subscription tier details
+- **Free Sample**: `POST /free/generate-sample` - Try without signup
+- **Authentication**: `GET /auth/validate` - Validate license key
+- **Payment**: `POST /payment/checkout` - Create Stripe checkout
+- **Webhooks**: `POST /payment/webhook` - Handle Stripe events
+
+### Feature Access Control
+
+Features are automatically gated based on your subscription tier:
+
+| Feature | Free | Pro | Enterprise |
+|---------|------|-----|------------|
+| Basic email generation | ✅ | ✅ | ✅ |
+| AI-powered research | ❌ | ✅ | ✅ |
+| CRM dashboard | ❌ | ✅ | ✅ |
+| Google Sheets sync | ❌ | ✅ | ✅ |
+| API integrations | ❌ | ✅ | ✅ |
+| Priority support | ❌ | ✅ | ✅ |
+| Team seats | 1 | 5 | 50 |
+
+### Usage Tracking
+
+Monitor your usage and limits:
+
+```bash
+# View license information and usage stats
+python main.py --license-info
+
+# Example output:
+# 📊 USAGE THIS MONTH
+# Emails: 45 / 1000
+# API Calls: 230 / 5000
 ```
 
 ## CRM System Overview
@@ -832,6 +947,71 @@ python main.py --crm-dashboard
 2. **Enable verbose mode**: Add `verbose: true` to your config
 3. **Test incrementally**: Start with basic CSV, then add features
 4. **Check API status**: Verify your API keys are active and have credits
+
+## 🚀 Production Deployment
+
+### Quick Production Setup
+
+1. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   pip install stripe fastapi uvicorn email-validator
+   ```
+
+2. **Set production environment variables**:
+   ```bash
+   export STRIPE_SECRET_KEY="sk_live_..."
+   export STRIPE_WEBHOOK_SECRET="whsec_..."
+   export OPENAI_API_KEY="sk-..."
+   ```
+
+3. **Start the production server**:
+   ```bash
+   # Using gunicorn for production
+   pip install gunicorn
+   gunicorn -w 4 -k uvicorn.workers.UvicornWorker api_server:app --bind 0.0.0.0:8000
+   
+   # Or simple uvicorn
+   python api_server.py
+   ```
+
+4. **Configure Stripe webhooks**:
+   - Webhook URL: `https://your-domain.com/payment/webhook`
+   - Events: `checkout.session.completed`, `invoice.payment_succeeded`, `customer.subscription.deleted`
+
+### Docker Deployment
+
+```dockerfile
+FROM python:3.10-slim
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+RUN pip install stripe fastapi uvicorn email-validator
+
+COPY . .
+
+EXPOSE 8000
+CMD ["python", "api_server.py"]
+```
+
+### Environment Variables
+
+```bash
+# Required for payment system
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Required for AI features
+OPENAI_API_KEY=sk-...
+
+# Optional integrations
+SNOV_CLIENT_ID=...
+SNOV_CLIENT_SECRET=...
+SERPAPI_KEY=...
+```
+
+For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Contributing
 

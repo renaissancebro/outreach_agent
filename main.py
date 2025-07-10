@@ -12,6 +12,11 @@ from email_generator import EmailGenerator
 from lead_collection_tools import LeadCollectionAgent
 from crm_system import CRMSystem, LeadStatus, InteractionType
 from flask import Flask, request, jsonify
+from auth_middleware import (
+    require_ai_research, require_crm_dashboard, require_snov_io, 
+    require_sheets_sync, require_serpapi, show_license_info,
+    set_license_key, remove_license_key
+)
 
 # Load environment variables
 load_dotenv()
@@ -255,6 +260,7 @@ class EnhancedOutreachAgent:
         print(f"✅ Imported {len(contacts)} leads to CRM")
         return contacts
     
+    @require_crm_dashboard
     def get_crm_dashboard(self) -> Dict:
         """Get CRM dashboard statistics"""
         return self.crm.get_dashboard_stats()
@@ -294,10 +300,12 @@ class EnhancedOutreachAgent:
             print(f"❌ Unsupported export format: {format}")
             return None
     
+    @require_sheets_sync
     def sync_crm_to_google_sheets(self, sheet_id: str, worksheet_name: str = "CRM Data") -> bool:
         """Sync CRM data to Google Sheets"""
         return self.crm.sync_to_google_sheets(sheet_id, worksheet_name)
     
+    @require_sheets_sync
     def import_crm_from_google_sheets(self, sheet_id: str, worksheet_name: str = "CRM Data") -> List:
         """Import CRM data from Google Sheets"""
         return self.crm.import_from_google_sheets(sheet_id, worksheet_name)
@@ -306,6 +314,16 @@ class EnhancedOutreachAgent:
         """Generate personalized emails for a list of leads"""
         print(f"\n🔧 Starting email generation for {len(leads)} leads...")
         print(f"🔧 AI Research enabled: {use_ai_research}")
+
+        # Check AI research access if requested
+        if use_ai_research:
+            from auth_middleware import require_license
+            auth_check = require_license("ai_research", allow_prompt=True)
+            test_func = lambda: True
+            result = auth_check(test_func)()
+            if result is None:
+                print("🔄 Falling back to template-based generation...")
+                use_ai_research = False
 
         emails = []
 
@@ -589,6 +607,11 @@ def main():
     parser.add_argument("--crm-import-from-sheets", help="Google Sheets ID to import CRM data from")
     parser.add_argument("--crm-update-status", nargs=2, metavar=("EMAIL", "STATUS"), help="Update contact status: email new_status")
     parser.add_argument("--import-to-crm", action="store_true", help="Import collected leads to CRM")
+    
+    # License management options
+    parser.add_argument("--license-info", action="store_true", help="Show license information")
+    parser.add_argument("--set-license", help="Set license key")
+    parser.add_argument("--remove-license", action="store_true", help="Remove stored license key")
 
     args = parser.parse_args()
 
@@ -596,6 +619,19 @@ def main():
         if args.server:
             # Run as Flask server
             run_server(host=args.host, port=args.port, debug=args.debug)
+            return 0
+
+        # Handle license management commands first
+        if args.license_info:
+            show_license_info()
+            return 0
+        
+        if args.set_license:
+            success = set_license_key(args.set_license)
+            return 0 if success else 1
+        
+        if args.remove_license:
+            remove_license_key()
             return 0
 
         # Initialize the agent
