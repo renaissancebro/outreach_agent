@@ -65,3 +65,35 @@ output:
 rate_limits:
   snov_api_calls_per_minute: 60
   delay_between_emails: 2 # seconds
+
+# Lead Collection Tools Configuration
+lead_collection_tools:
+  # Playwright Web Scraper
+  playwright:
+    rate_limit_seconds: 2
+    timeout_seconds: 30
+    max_retries: 3
+    headless: true
+    user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    
+  # SerpAPI Search Collector
+  serpapi:
+    api_key: "${SERPAPI_KEY}"
+    rate_limit_seconds: 1
+    max_results_per_query: 10
+    default_location: "United States"
+    
+  # Sales Navigator CSV Processor
+  sales_nav:
+    enable_enrichment: true
+    clean_data: true
+    auto_detect_columns: true
+    
+  # Tool Selection Preferences
+  tool_preferences:
+    # Prefer free tools when budget is constrained
+    cost_preference: "free" # free, low, medium, high
+    # Prefer accuracy over speed
+    accuracy_vs_speed: "accuracy" # speed, balanced, accuracy
+    # Default tool selection strategy
+    selection_strategy: "best_fit" # best_fit, fastest, most_accurate, cheapest

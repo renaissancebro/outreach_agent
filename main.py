@@ -9,6 +9,7 @@ from crewai import Agent, Task, Crew
 from dotenv import load_dotenv
 from lead_manager import LeadManager, Lead
 from email_generator import EmailGenerator
+from lead_collection_tools import LeadCollectionAgent
 from flask import Flask, request, jsonify
 
 # Load environment variables
@@ -22,6 +23,7 @@ class EnhancedOutreachAgent:
         self.config = self._load_config(config_path)
         self.lead_manager = LeadManager(self.config)
         self.email_generator = EmailGenerator(self.config)
+        self.lead_collection_agent = LeadCollectionAgent(self.config)
         self.crew = self._setup_crew()
         self.campaign_log = []
 
@@ -134,6 +136,112 @@ class EnhancedOutreachAgent:
         companies = self.lead_manager.search_snov_companies(company_query, limit)
         print(f"✅ Found {len(companies)} companies")
         return companies
+    
+    def collect_leads_intelligently(self, request_params: Dict) -> List[Lead]:
+        """
+        Intelligently collect leads using the best available tool
+        
+        Args:
+            request_params: Dict containing:
+                - task_type: Type of lead collection task
+                - input_data: Available input data (URLs, queries, files)
+                - constraints: Budget, time, accuracy requirements
+                - max_leads: Maximum number of leads to collect
+        
+        Returns:
+            List of Lead objects
+        """
+        print(f"\n🤖 INTELLIGENT LEAD COLLECTION")
+        print(f"{'='*50}")
+        
+        # Get tool recommendation from the agent
+        recommendation = self.lead_collection_agent.recommend_tool(request_params)
+        
+        print(f"🎯 Recommended Tool: {recommendation['recommended_tool']}")
+        print(f"🔍 Confidence: {recommendation['confidence']:.2f}")
+        print(f"💭 Reasoning: {recommendation['reasoning']}")
+        
+        if recommendation['alternatives']:
+            print(f"🔄 Alternatives: {[alt['tool'] for alt in recommendation['alternatives']]}")
+        
+        recommended_tool = recommendation['recommended_tool']
+        
+        if not recommended_tool:
+            print(f"❌ No suitable tool available for this request")
+            return []
+        
+        # Extract parameters for the chosen tool
+        tool_params = self._prepare_tool_parameters(recommended_tool, request_params)
+        
+        # Collect leads using the recommended tool
+        print(f"\n🔧 Collecting leads using {recommended_tool}...")
+        try:
+            import asyncio
+            leads = asyncio.run(self.lead_collection_agent.collect_leads(recommended_tool, tool_params))
+            print(f"✅ Successfully collected {len(leads)} leads using {recommended_tool}")
+            return leads
+        except Exception as e:
+            print(f"❌ Error collecting leads with {recommended_tool}: {str(e)}")
+            
+            # Try alternative tools if available
+            if recommendation['alternatives']:
+                print(f"🔄 Trying alternative tools...")
+                for alt in recommendation['alternatives']:
+                    try:
+                        alt_params = self._prepare_tool_parameters(alt['tool'], request_params)
+                        leads = asyncio.run(self.lead_collection_agent.collect_leads(alt['tool'], alt_params))
+                        print(f"✅ Successfully collected {len(leads)} leads using {alt['tool']}")
+                        return leads
+                    except Exception as e2:
+                        print(f"❌ Alternative {alt['tool']} also failed: {str(e2)}")
+                        continue
+            
+            return []
+    
+    def _prepare_tool_parameters(self, tool_name: str, request_params: Dict) -> Dict:
+        """Prepare parameters for the specific tool"""
+        input_data = request_params.get('input_data', {})
+        max_leads = request_params.get('max_leads', 50)
+        
+        if tool_name == 'playwright':
+            return {
+                'urls': input_data.get('linkedin_urls', []) + input_data.get('company_urls', []),
+                'source_type': 'linkedin' if input_data.get('linkedin_urls') else 'company_website',
+                'max_leads': max_leads
+            }
+        elif tool_name == 'serpapi':
+            return {
+                'queries': input_data.get('search_queries', []) + input_data.get('company_names', []),
+                'max_results': min(max_leads, 10),  # SerpAPI typically returns 10 results per query
+                'filters': input_data.get('filters', {})
+            }
+        elif tool_name == 'sales_nav':
+            return {
+                'csv_file': input_data.get('csv_file', ''),
+                'enrich_data': input_data.get('enrich_data', True),
+                'clean_data': input_data.get('clean_data', True)
+            }
+        else:
+            return {}
+    
+    def get_tool_capabilities(self):
+        """Get capabilities of all available lead collection tools"""
+        capabilities = self.lead_collection_agent.get_tool_capabilities()
+        
+        print(f"\n🛠️  AVAILABLE LEAD COLLECTION TOOLS")
+        print(f"{'='*50}")
+        
+        for i, cap in enumerate(capabilities, 1):
+            print(f"{i}. {cap.name}")
+            print(f"   📝 Description: {cap.description}")
+            print(f"   📥 Input Types: {', '.join(cap.input_types)}")
+            print(f"   ⏱️  Time: {cap.estimated_time}")
+            print(f"   💰 Cost: {cap.cost_level}")
+            print(f"   🎯 Accuracy: {cap.accuracy_level}")
+            print(f"   📋 Requirements: {', '.join(cap.requirements)}")
+            print()
+        
+        return capabilities
 
     def generate_emails_for_leads(self, leads: List[Lead], use_ai_research: bool = True) -> List[Dict]:
         """Generate personalized emails for a list of leads"""
@@ -390,6 +498,16 @@ def main():
     parser.add_argument("--host", default="0.0.0.0", help="Server host (default: 0.0.0.0)")
     parser.add_argument("--port", type=int, default=5000, help="Server port (default: 5000)")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+    
+    # Lead collection tool options
+    parser.add_argument("--collect-leads", action="store_true", help="Use intelligent lead collection")
+    parser.add_argument("--linkedin-urls", nargs="+", help="LinkedIn profile URLs to scrape")
+    parser.add_argument("--company-urls", nargs="+", help="Company website URLs to scrape")
+    parser.add_argument("--search-queries", nargs="+", help="Search queries for SerpAPI")
+    parser.add_argument("--sales-nav-csv", help="Sales Navigator CSV export file")
+    parser.add_argument("--tool-capabilities", action="store_true", help="Show available tool capabilities")
+    parser.add_argument("--budget", choices=["free", "low", "medium", "high"], default="free", help="Budget constraint for tool selection")
+    parser.add_argument("--priority", choices=["speed", "accuracy", "cost"], default="accuracy", help="Priority for tool selection")
 
     args = parser.parse_args()
 
@@ -401,8 +519,42 @@ def main():
 
         # Initialize the agent
         agent = EnhancedOutreachAgent(args.config)
-
-        if args.csv:
+        
+        if args.tool_capabilities:
+            # Show tool capabilities and exit
+            agent.get_tool_capabilities()
+            return 0
+        
+        if args.collect_leads:
+            # Use intelligent lead collection
+            request_params = {
+                'task_type': 'lead_collection',
+                'input_data': {
+                    'linkedin_urls': args.linkedin_urls or [],
+                    'company_urls': args.company_urls or [],
+                    'search_queries': args.search_queries or [],
+                    'csv_file': args.sales_nav_csv or '',
+                    'source': 'sales_nav' if args.sales_nav_csv else 'web'
+                },
+                'constraints': {
+                    'budget': args.budget,
+                    'priority': args.priority
+                },
+                'max_leads': args.limit
+            }
+            
+            # Collect leads intelligently
+            leads = agent.collect_leads_intelligently(request_params)
+            
+            if leads:
+                # Generate emails for collected leads
+                emails = agent.generate_emails_for_leads(leads, not args.no_ai_research)
+                agent.save_results(emails, leads)
+            else:
+                print("❌ No leads collected")
+                return 1
+        
+        elif args.csv:
             # Run CSV-based campaign
             agent.run_csv_campaign(
                 csv_path=args.csv,

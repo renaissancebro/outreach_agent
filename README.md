@@ -12,6 +12,10 @@ A powerful, configurable outreach agent that generates personalized cold emails 
 - **Rate Limiting**: Built-in rate limiting for API calls
 - **Multiple Output Formats**: JSON, text, and markdown output options
 - **Personalization Levels**: Low, medium, and high research depth options
+- **🆕 Intelligent Lead Collection**: AI-powered tool selection for optimal lead gathering
+- **🆕 Playwright Web Scraping**: Automated scraping of LinkedIn profiles and company websites
+- **🆕 SerpAPI Integration**: Search-based lead collection using Google search results
+- **🆕 Enhanced Sales Navigator Support**: Advanced CSV processing with data enrichment
 
 ## Installation
 
@@ -24,7 +28,13 @@ A powerful, configurable outreach agent that generates personalized cold emails 
 2. **Install dependencies:**
 
    ```bash
-   pip install -r requirements-simple.txt
+   pip install -r requirements.txt
+   ```
+
+   **For web scraping capabilities, also install:**
+   ```bash
+   pip install playwright serpapi
+   playwright install
    ```
 
 3. **Set up environment variables:**
@@ -32,6 +42,7 @@ A powerful, configurable outreach agent that generates personalized cold emails 
    ```bash
    OPENAI_API_KEY=your_openai_api_key_here
    SNOV_API_KEY=your_snov_api_key_here  # Optional
+   SERPAPI_KEY=your_serpapi_key_here    # Optional - for search-based collection
    ```
 
 4. **Validate your setup:**
@@ -132,6 +143,44 @@ python main.py --csv leads.csv --no-ai-research
 
 ```bash
 python main.py --server --port 5000
+```
+
+### 🆕 Intelligent Lead Collection
+
+**Show available tools and capabilities:**
+
+```bash
+python main.py --tool-capabilities
+```
+
+**Intelligently process Sales Navigator export:**
+
+```bash
+python main.py --collect-leads --sales-nav-csv your_export.csv
+```
+
+**Scrape LinkedIn profiles (requires Playwright):**
+
+```bash
+python main.py --collect-leads --linkedin-urls https://linkedin.com/in/profile1 https://linkedin.com/in/profile2
+```
+
+**Search-based lead collection (requires SerpAPI):**
+
+```bash
+python main.py --collect-leads --search-queries "tech startups San Francisco" "AI companies"
+```
+
+**Scrape company websites:**
+
+```bash
+python main.py --collect-leads --company-urls https://company1.com https://company2.com
+```
+
+**Control tool selection with constraints:**
+
+```bash
+python main.py --collect-leads --sales-nav-csv export.csv --budget free --priority accuracy
 ```
 
 ### Advanced Usage
