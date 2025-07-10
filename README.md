@@ -16,6 +16,10 @@ A powerful, configurable outreach agent that generates personalized cold emails 
 - **🆕 Playwright Web Scraping**: Automated scraping of LinkedIn profiles and company websites
 - **🆕 SerpAPI Integration**: Search-based lead collection using Google search results
 - **🆕 Enhanced Sales Navigator Support**: Advanced CSV processing with data enrichment
+- **🆕 Comprehensive CRM System**: SQLite-based contact management with pipeline tracking
+- **🆕 Google Sheets Integration**: Bi-directional sync with Google Sheets for team collaboration
+- **🆕 Interaction Tracking**: Complete email and engagement history for each contact
+- **🆕 Pipeline Management**: Status-based lead progression with automated logging
 
 ## Installation
 
@@ -35,6 +39,11 @@ A powerful, configurable outreach agent that generates personalized cold emails 
    ```bash
    pip install playwright serpapi
    playwright install
+   ```
+
+   **For Google Sheets integration (optional):**
+   ```bash
+   pip install gspread google-auth
    ```
 
 3. **Set up environment variables:**
@@ -110,6 +119,10 @@ A powerful, configurable outreach agent that generates personalized cold emails 
 | Web scraping (Playwright) | ✅ | ❌ | ❌ | Free web scraping |
 | Search-based lead collection | ✅ | ❌ | ✅ | Find new prospects |
 | Company research | ✅ | ✅ | ✅ | Maximum capability |
+| **CRM contact management** | ✅ | ❌ | ❌ | **Always available** |
+| **Pipeline tracking** | ✅ | ❌ | ❌ | **Status management** |
+| **Interaction history** | ✅ | ❌ | ❌ | **Email logging** |
+| **Google Sheets sync** | ✅ | ❌ | ❌ | **Team collaboration** |
 
 ### Testing API Keys
 
@@ -170,6 +183,40 @@ python main.py --tool-capabilities
 4. **Add optional APIs** as needed for enhanced features
 5. **Scale up** once you're comfortable with the system
 
+### 🔗 Google Sheets Integration Setup
+
+To enable Google Sheets sync for team collaboration:
+
+1. **Create Google Cloud Project**:
+   - Go to [Google Cloud Console](https://console.cloud.google.com)
+   - Create a new project or select existing one
+
+2. **Enable Google Sheets API**:
+   - In the Console, go to "APIs & Services" > "Library"
+   - Search for "Google Sheets API" and enable it
+   - Also enable "Google Drive API"
+
+3. **Create Service Account**:
+   - Go to "APIs & Services" > "Credentials"
+   - Click "Create Credentials" > "Service Account"
+   - Give it a name like "outreach-agent-sheets"
+   - Download the JSON key file
+
+4. **Configure the System**:
+   - Save the JSON file as `google_credentials.json` in your project directory
+   - The system will automatically detect and use it
+
+5. **Share Your Sheet**:
+   - Create a Google Sheet for your CRM data
+   - Share it with the service account email (found in the JSON file)
+   - Give it "Editor" permissions
+   - Copy the Sheet ID from the URL
+
+6. **Test the Integration**:
+   ```bash
+   python main.py --crm-import-to-sheets "your_sheet_id_here"
+   ```
+
 ## Configuration
 
 The agent uses `config.yaml` for all settings. Key configuration sections:
@@ -222,6 +269,33 @@ personalization:
   include_company_research: true
   max_email_length: 300
   tone: "professional_friendly" # formal, professional_friendly, casual
+```
+
+### CRM Configuration
+
+```yaml
+crm:
+  # SQLite database path
+  database_path: "crm.db"
+  
+  # Google Sheets integration (optional)
+  google_credentials_path: "google_credentials.json"
+  
+  # Auto-import settings
+  auto_import_leads: true
+  auto_log_emails: true
+  
+  # Lead scoring rules
+  lead_scoring:
+    has_linkedin: 5
+    has_phone: 3
+    company_size_large: 10
+    industry_match: 15
+    
+  # Pipeline automation
+  pipeline:
+    auto_advance_stages: false
+    follow_up_days: 7
 ```
 
 ## Usage
@@ -302,6 +376,52 @@ python main.py --collect-leads --company-urls https://company1.com https://compa
 
 ```bash
 python main.py --collect-leads --sales-nav-csv export.csv --budget free --priority accuracy
+```
+
+### 🆕 CRM System
+
+The system includes a comprehensive CRM for managing your outreach pipeline:
+
+**View CRM dashboard:**
+
+```bash
+python main.py --crm-dashboard
+```
+
+**Search contacts:**
+
+```bash
+python main.py --crm-search "company name"
+python main.py --crm-status new
+python main.py --crm-status contacted
+```
+
+**Update contact status:**
+
+```bash
+python main.py --crm-update-status john@company.com contacted
+```
+
+**Export CRM data:**
+
+```bash
+python main.py --crm-export contacts_export.csv
+```
+
+**Import leads to CRM automatically:**
+
+```bash
+python main.py --collect-leads --sales-nav-csv file.csv --import-to-crm
+```
+
+**Sync with Google Sheets:**
+
+```bash
+# Export to Google Sheets
+python main.py --crm-import-to-sheets "your_sheet_id"
+
+# Import from Google Sheets
+python main.py --crm-import-from-sheets "your_sheet_id"
 ```
 
 ### How the Intelligent Agent Works

@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from lead_manager import LeadManager, Lead
 from email_generator import EmailGenerator
 from lead_collection_tools import LeadCollectionAgent
+from crm_system import CRMSystem, LeadStatus, InteractionType
 from flask import Flask, request, jsonify
 
 # Load environment variables
@@ -24,6 +25,7 @@ class EnhancedOutreachAgent:
         self.lead_manager = LeadManager(self.config)
         self.email_generator = EmailGenerator(self.config)
         self.lead_collection_agent = LeadCollectionAgent(self.config)
+        self.crm = CRMSystem(self.config)
         self.crew = self._setup_crew()
         self.campaign_log = []
 
@@ -242,6 +244,63 @@ class EnhancedOutreachAgent:
             print()
         
         return capabilities
+    
+    def import_leads_to_crm(self, leads: List[Lead], source: str = "lead_collection") -> List:
+        """Import leads to CRM system"""
+        print(f"\n📋 IMPORTING LEADS TO CRM")
+        print(f"{'='*50}")
+        
+        contacts = self.crm.batch_import_leads(leads, source)
+        
+        print(f"✅ Imported {len(contacts)} leads to CRM")
+        return contacts
+    
+    def get_crm_dashboard(self) -> Dict:
+        """Get CRM dashboard statistics"""
+        return self.crm.get_dashboard_stats()
+    
+    def update_contact_status(self, email: str, status: str, notes: str = None) -> bool:
+        """Update contact status in CRM"""
+        contact = self.crm.db.get_contact_by_email(email)
+        if not contact:
+            print(f"❌ Contact not found: {email}")
+            return False
+        
+        try:
+            status_enum = LeadStatus(status)
+            return self.crm.update_contact_status(contact.id, status_enum, notes)
+        except ValueError:
+            print(f"❌ Invalid status: {status}")
+            return False
+    
+    def search_crm_contacts(self, query: str = None, status: str = None) -> List:
+        """Search CRM contacts"""
+        status_enum = None
+        if status:
+            try:
+                status_enum = LeadStatus(status)
+            except ValueError:
+                print(f"❌ Invalid status: {status}")
+                return []
+        
+        contacts = self.crm.db.search_contacts(query=query, status=status_enum)
+        return contacts
+    
+    def export_crm_data(self, format: str = "csv", filename: str = None) -> str:
+        """Export CRM data"""
+        if format == "csv":
+            return self.crm.export_to_csv(filename)
+        else:
+            print(f"❌ Unsupported export format: {format}")
+            return None
+    
+    def sync_crm_to_google_sheets(self, sheet_id: str, worksheet_name: str = "CRM Data") -> bool:
+        """Sync CRM data to Google Sheets"""
+        return self.crm.sync_to_google_sheets(sheet_id, worksheet_name)
+    
+    def import_crm_from_google_sheets(self, sheet_id: str, worksheet_name: str = "CRM Data") -> List:
+        """Import CRM data from Google Sheets"""
+        return self.crm.import_from_google_sheets(sheet_id, worksheet_name)
 
     def generate_emails_for_leads(self, leads: List[Lead], use_ai_research: bool = True) -> List[Dict]:
         """Generate personalized emails for a list of leads"""
@@ -320,6 +379,18 @@ class EnhancedOutreachAgent:
             print(f"   ✅ Email generated successfully!")
             print(f"   📧 Subject: {email_data['subject']}")
             print(f"   📝 Body length: {len(email_data['body'])} characters")
+
+            # Import lead to CRM and log email interaction
+            try:
+                contact = self.crm.import_lead_to_crm(lead, "email_campaign")
+                self.crm.log_email_sent(
+                    contact.id,
+                    email_data['subject'],
+                    email_data['body']
+                )
+                print(f"   📋 Logged in CRM: {contact.email}")
+            except Exception as e:
+                print(f"   ⚠️  CRM logging failed: {str(e)}")
 
             # Log the email generation
             self.campaign_log.append({
@@ -508,6 +579,16 @@ def main():
     parser.add_argument("--tool-capabilities", action="store_true", help="Show available tool capabilities")
     parser.add_argument("--budget", choices=["free", "low", "medium", "high"], default="free", help="Budget constraint for tool selection")
     parser.add_argument("--priority", choices=["speed", "accuracy", "cost"], default="accuracy", help="Priority for tool selection")
+    
+    # CRM options
+    parser.add_argument("--crm-dashboard", action="store_true", help="Show CRM dashboard")
+    parser.add_argument("--crm-search", help="Search CRM contacts")
+    parser.add_argument("--crm-status", choices=["new", "contacted", "responded", "qualified", "proposal_sent", "negotiation", "closed_won", "closed_lost", "dormant"], help="Filter by contact status")
+    parser.add_argument("--crm-export", help="Export CRM data to file")
+    parser.add_argument("--crm-import-to-sheets", help="Google Sheets ID to sync CRM data to")
+    parser.add_argument("--crm-import-from-sheets", help="Google Sheets ID to import CRM data from")
+    parser.add_argument("--crm-update-status", nargs=2, metavar=("EMAIL", "STATUS"), help="Update contact status: email new_status")
+    parser.add_argument("--import-to-crm", action="store_true", help="Import collected leads to CRM")
 
     args = parser.parse_args()
 
@@ -523,6 +604,71 @@ def main():
         if args.tool_capabilities:
             # Show tool capabilities and exit
             agent.get_tool_capabilities()
+            return 0
+        
+        # CRM-specific commands
+        if args.crm_dashboard:
+            # Show CRM dashboard
+            stats = agent.get_crm_dashboard()
+            print(f"\n📊 CRM DASHBOARD")
+            print(f"{'='*50}")
+            print(f"📈 Total Contacts: {stats['total_contacts']}")
+            print(f"📋 Recent Activity: {stats['recent_contacts']} contacts")
+            print(f"\n🔄 PIPELINE SUMMARY:")
+            pipeline = stats['pipeline_summary']
+            print(f"   🆕 New Leads: {pipeline['new_leads']}")
+            print(f"   📧 Contacted: {pipeline['contacted']}")
+            print(f"   ✅ Qualified: {pipeline['qualified']}")
+            print(f"   🎉 Closed Won: {pipeline['closed_won']}")
+            print(f"   ❌ Closed Lost: {pipeline['closed_lost']}")
+            return 0
+        
+        if args.crm_search or args.crm_status:
+            # Search CRM contacts
+            contacts = agent.search_crm_contacts(query=args.crm_search, status=args.crm_status)
+            print(f"\n🔍 CRM SEARCH RESULTS")
+            print(f"{'='*50}")
+            print(f"Found {len(contacts)} contacts:")
+            
+            for contact in contacts[:20]:  # Limit to first 20
+                print(f"   📧 {contact.first_name} {contact.last_name} ({contact.email})")
+                print(f"      🏢 {contact.company_name} - {contact.position}")
+                print(f"      📊 Status: {contact.status.value} | Score: {contact.lead_score}")
+                print()
+            
+            if len(contacts) > 20:
+                print(f"   ... and {len(contacts) - 20} more contacts")
+            return 0
+        
+        if args.crm_export:
+            # Export CRM data
+            filename = agent.export_crm_data("csv", args.crm_export)
+            print(f"✅ CRM data exported to: {filename}")
+            return 0
+        
+        if args.crm_import_to_sheets:
+            # Sync to Google Sheets
+            success = agent.sync_crm_to_google_sheets(args.crm_import_to_sheets)
+            if success:
+                print(f"✅ CRM data synced to Google Sheets")
+            else:
+                print(f"❌ Failed to sync to Google Sheets")
+            return 0
+        
+        if args.crm_import_from_sheets:
+            # Import from Google Sheets
+            contacts = agent.import_crm_from_google_sheets(args.crm_import_from_sheets)
+            print(f"✅ Imported {len(contacts)} contacts from Google Sheets")
+            return 0
+        
+        if args.crm_update_status:
+            # Update contact status
+            email, status = args.crm_update_status
+            success = agent.update_contact_status(email, status)
+            if success:
+                print(f"✅ Updated status for {email} to {status}")
+            else:
+                print(f"❌ Failed to update status for {email}")
             return 0
         
         if args.collect_leads:
@@ -547,6 +693,10 @@ def main():
             leads = agent.collect_leads_intelligently(request_params)
             
             if leads:
+                # Import to CRM if requested
+                if args.import_to_crm:
+                    agent.import_leads_to_crm(leads, "intelligent_collection")
+                
                 # Generate emails for collected leads
                 emails = agent.generate_emails_for_leads(leads, not args.no_ai_research)
                 agent.save_results(emails, leads)

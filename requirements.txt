@@ -165,3 +165,5 @@ zipp==3.23.0
 flask==3.0.0
 playwright==1.51.0
 serpapi==2.0.0
+gspread==6.1.2
+google-auth==2.40.3

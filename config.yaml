@@ -97,3 +97,33 @@ lead_collection_tools:
     accuracy_vs_speed: "accuracy" # speed, balanced, accuracy
     # Default tool selection strategy
     selection_strategy: "best_fit" # best_fit, fastest, most_accurate, cheapest
+
+# CRM System Configuration
+crm:
+  # SQLite database path
+  database_path: "crm.db"
+  
+  # Google Sheets integration (optional)
+  google_credentials_path: "google_credentials.json"
+  
+  # Auto-import settings
+  auto_import_leads: true
+  auto_log_emails: true
+  
+  # Default lead scoring rules
+  lead_scoring:
+    # Points for different attributes
+    has_linkedin: 5
+    has_phone: 3
+    company_size_large: 10
+    industry_match: 15
+    
+  # Pipeline stages and automation
+  pipeline:
+    auto_advance_stages: false
+    follow_up_days: 7
+    
+  # Data sync settings
+  sync:
+    google_sheets_interval_hours: 24
+    backup_interval_hours: 6
