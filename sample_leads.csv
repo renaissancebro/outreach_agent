@@ -1,0 +1,6 @@
+first_name,last_name,email,company_name,position,industry,website,location
+John,Smith,john.smith@techcorp.com,TechCorp Inc,CEO,Technology,https://techcorp.com,San Francisco
+Sarah,Johnson,sarah.j@innovatehealth.com,InnovateHealth,VP Marketing,Healthcare,https://innovatehealth.com,Boston
+Mike,Chen,mchen@financeplus.com,FinancePlus,CTO,Financial Services,https://financeplus.com,New York
+Lisa,Rodriguez,lrodriguez@greenstart.com,GreenStart,Founder,Clean Energy,https://greenstart.com,Austin
+David,Brown,dbrown@retailmax.com,RetailMax,Operations Director,Retail,https://retailmax.com,Chicago
